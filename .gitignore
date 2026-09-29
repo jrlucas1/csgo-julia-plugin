@@ -1,0 +1,20 @@
+# Python environments and caches
+.venv*/
+**/.venv/
+**/venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Julia model weights and downloaded cache (re-download separately)
+bridge/Julia-1/model.safetensors
+bridge/Julia-1/.cache/
+bridge/Julia-1/.baixado
+
+# Game output and local artifacts
+*.dem
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+bridge/Julia-1/

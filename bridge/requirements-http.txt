@@ -1,0 +1,3 @@
+# --decider http --http-backend typesafe  (API hospedada da TypeSafe, precisa de TYPESAFE_API_KEY)
+# O backend "raw" (servidor System One local) usa só a biblioteca padrão.
+semantic-operators[typesafe]>=0.11

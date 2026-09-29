@@ -1,0 +1,3 @@
+# --decider laya: Laya via semantic-operators (conferido na 0.11.0)
+# puxa laya>=0.3.20 e torch
+semantic-operators[laya]>=0.11

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Julia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Overlay "cérebro da Julia" para o OBS.
+  OBS: Fontes -> + -> Navegador -> URL http://127.0.0.1:27501/  (largura 1920, altura 1080)
+  Parâmetros na URL:
+    ?scale=1.2          aumenta/diminui o painel
+    ?pos=br             canto: tl, tr, bl (padrão), br
+    ?bg=1               fundo escuro na página inteira (para ver no navegador, fora do OBS)
+-->
+<style>
+  :root {
+    --panel: rgba(12, 14, 19, 0.78);
+    --panel-edge: rgba(255, 255, 255, 0.08);
+    --text: #f2f4f8;
+    --muted: #9aa3b2;
+    --accent: #ff8a3d;        /* laranja CS */
+    --accent-2: #ffb36b;
+    --bar-bg: rgba(255, 255, 255, 0.07);
+    --bar: rgba(255, 255, 255, 0.28);
+    --walk: #b58cff;
+    --danger: #ff4d5e;
+    --ok: #3ddc84;
+    --hear: #5cc8ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body.bg { background: #1b1f27; }
+  body {
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { position: absolute; padding: 36px; }
+  .wrap.tl { top: 0; left: 0; }
+  .wrap.tr { top: 0; right: 0; }
+  .wrap.bl { bottom: 0; left: 0; }
+  .wrap.br { bottom: 0; right: 0; }
+
+  .card {
+    width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 18px;
+    padding: 18px 20px 16px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    transform-origin: bottom left;
+    position: relative;
+    overflow: hidden;
+  }
+  .wrap.tl .card { transform-origin: top left; }
+  .wrap.tr .card { transform-origin: top right; }
+  .wrap.br .card { transform-origin: bottom right; }
+
+  /* brilho quando a decisão muda */
+  .card::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    box-shadow: inset 0 0 0 2px var(--accent); opacity: 0;
+  }
+  .card.flash::after { animation: flash 520ms ease-out; }
+  @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700;
+           letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+         box-shadow: 0 0 10px var(--ok); animation: pulse 1.4s ease-in-out infinite; }
+  .dot.off { background: var(--danger); box-shadow: 0 0 10px var(--danger); animation: none; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .model { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .action { display: flex; align-items: baseline; gap: 10px; }
+  .action .name { font-size: 34px; font-weight: 800; letter-spacing: 0.01em; line-height: 1.15;
+                  white-space: nowrap; min-width: 0; flex: 1;
+                  color: var(--accent); text-shadow: 0 0 24px rgba(255, 138, 61, 0.35); }
+  .meta { display: flex; align-items: center; gap: 10px; min-height: 24px; margin-top: 2px; }
+  .conf { font-size: 16px; font-weight: 700; color: var(--accent-2);
+                  font-variant-numeric: tabular-nums; }
+  .badge { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+           padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .badge.walk { color: var(--walk); }
+  .badge[hidden] { display: none; }
+
+  .sit { margin: 8px 0 12px; font-size: 15px; font-weight: 600; display: flex; align-items: center;
+         gap: 8px; min-height: 22px; }
+  .sit .ico { width: 22px; text-align: center; }
+  .sit.enemy { color: var(--text); }
+  .sit.aim { color: var(--danger); }
+  .sit.hear { color: var(--hear); }
+  .sit.none { color: var(--muted); }
+
+  .bars { display: grid; gap: 6px; margin-bottom: 14px; }
+  .row { display: grid; grid-template-columns: 128px 1fr 42px; align-items: center; gap: 10px;
+         font-size: 13px; }
+  .row .lbl { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .track { height: 8px; background: var(--bar-bg); border-radius: 999px; overflow: hidden; }
+  .row .fill { height: 100%; width: 0; background: var(--bar); border-radius: inherit;
+               transition: width 180ms ease-out; }
+  .row .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row.chosen .lbl, .row.chosen .pct { color: var(--text); font-weight: 700; }
+  .row.chosen .fill { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .bars:empty { display: none; }
+
+  .foot { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+  .hp { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700;
+        font-variant-numeric: tabular-nums; }
+  .hp .track { flex: 1; height: 6px; background: var(--bar-bg); border-radius: 999px; overflow: hidden; }
+  .hp .fill { height: 100%; width: 100%; background: var(--ok); transition: width 250ms ease-out, background 250ms; }
+  .ammo { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ammo b { color: var(--text); font-size: 16px; }
+  .ammo.empty b { color: var(--danger); }
+  .lat { grid-column: 1 / -1; font-size: 11px; color: var(--muted); letter-spacing: 0.02em;
+         font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap bl" id="wrap">
+  <div class="card" id="card">
+    <div class="top">
+      <div class="brand"><span class="dot off" id="dot"></span><span id="brand">Julia</span></div>
+      <div class="model" id="model"></div>
+    </div>
+    <div class="action"><span class="name" id="action">waiting…</span></div>
+    <div class="meta">
+      <span class="conf" id="conf"></span>
+      <span class="badge walk" id="walk" hidden>walking silently</span>
+    </div>
+    <div class="sit none" id="sit"><span class="ico" id="sitIco">·</span><span id="sitTxt">no data from the bridge</span></div>
+    <div class="bars" id="bars"></div>
+    <div class="foot">
+      <div class="hp"><span id="hpTxt">— HP</span><div class="track"><div class="fill" id="hpFill"></div></div></div>
+      <div class="ammo" id="ammo"><b>—</b></div>
+      <div class="lat" id="lat"></div>
+    </div>
+  </div>
+</div>
+<script>
+  const LABELS = {
+    hold: "HOLDING", peek_left: "PEEK LEFT", peek_right: "PEEK RIGHT",
+    strafe_shoot: "STRAFE + SHOOT", crouch_spray: "CROUCH SPRAY", fall_back: "FALLING BACK",
+    push: "PUSHING", reload: "RELOADING", face_sound: "TURNING TO SOUND",
+  };
+  const SHORT = {
+    hold: "hold", peek_left: "peek left", peek_right: "peek right",
+    strafe_shoot: "strafe + shoot", crouch_spray: "crouch spray", fall_back: "fall back",
+    push: "push", reload: "reload", face_sound: "turn to sound",
+  };
+
+  const q = new URLSearchParams(location.search);
+  const scale = parseFloat(q.get("scale") || "1") || 1;
+  const pos = (q.get("pos") || "bl").toLowerCase();
+  if (q.get("bg") === "1") document.body.classList.add("bg");
+  const wrap = document.getElementById("wrap");
+  wrap.className = "wrap " + (["tl", "tr", "bl", "br"].includes(pos) ? pos : "bl");
+  const card = document.getElementById("card");
+  card.style.transform = `scale(${scale})`;
+
+  const $ = (id) => document.getElementById(id);
+  let lastAction = null, lastStance = null, lastSeenAt = 0, lastT = null;
+
+  function sitClass(s) {
+    if (!s) return ["none", "·"];
+    if (s.includes("AIMING")) return ["aim", "⚠"];
+    if (s.startsWith("enemy")) return ["enemy", "👁"];
+    if (s.startsWith("heard")) return ["hear", "👂"];
+    if (s.startsWith("last seen")) return ["none", "🕑"];
+    return ["none", "·"];
+  }
+
+  function render(d) {
+    const act = d.action || "hold";
+    const nameEl = $("action");
+    nameEl.textContent = LABELS[act] || act.toUpperCase();
+    // encolhe a fonte até caber numa linha (o painel não muda de tamanho)
+    let fs = 34;
+    nameEl.style.fontSize = fs + "px";
+    while (nameEl.scrollWidth > nameEl.clientWidth && fs > 18) { fs -= 1; nameEl.style.fontSize = fs + "px"; }
+    const p = d.probs && d.probs[act];
+    $("conf").textContent = (p != null) ? Math.round(p * 100) + "%" : "";
+    $("walk").hidden = d.stance !== "walk";
+
+    const [cls, ico] = sitClass(d.situation);
+    $("sit").className = "sit " + cls;
+    $("sitIco").textContent = ico;
+    $("sitTxt").textContent = d.situation || "";
+
+    // barras: top 5 por probabilidade
+    const bars = $("bars");
+    const entries = Object.entries(d.probs || {}).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const keys = entries.map(([k]) => k).join(",");
+    if (bars.dataset.keys !== keys) {       // recria só quando muda a lista
+      bars.innerHTML = "";
+      for (const [k] of entries) {
+        const row = document.createElement("div");
+        row.className = "row"; row.dataset.k = k;
+        row.innerHTML = `<span class="lbl"></span><div class="track"><div class="fill"></div></div><span class="pct"></span>`;
+        row.querySelector(".lbl").textContent = SHORT[k] || k;
+        bars.appendChild(row);
+      }
+      bars.dataset.keys = keys;
+    }
+    for (const [k, v] of entries) {
+      const row = bars.querySelector(`[data-k="${k}"]`);
+      row.classList.toggle("chosen", k === act);
+      requestAnimationFrame(() => { row.querySelector(".fill").style.width = Math.max(2, v * 100) + "%"; });
+      row.querySelector(".pct").textContent = Math.round(v * 100) + "%";
+    }
+
+    const hp = Math.max(0, Math.min(100, d.hp ?? 0));
+    $("hpTxt").textContent = hp + " HP";
+    $("hpFill").style.width = hp + "%";
+    $("hpFill").style.background = hp > 50 ? "var(--ok)" : hp > 25 ? "#ffc53d" : "var(--danger)";
+
+    const clip = d.clip ?? -1, reserve = d.reserve ?? -1;
+    $("ammo").className = "ammo" + (clip === 0 ? " empty" : "");
+    $("ammo").innerHTML = clip >= 0 ? `<b>${clip}</b> / ${Math.max(0, reserve)}` : "<b>—</b>";
+
+    const dev = { cuda: "GPU", cpu: "CPU", mps: "GPU (Mac)" }[d.device];
+    $("model").textContent = d.decider === "julia" ? (dev || "") : (d.decider || "") + (dev ? " · " + dev : "");
+    const lat = [];
+    if (d.model_ms != null) lat.push(`model ${d.model_ms.toFixed(0)} ms`);
+    if (d.rtt_ms != null) lat.push(`round trip ${d.rtt_ms} ms`);
+    $("lat").textContent = lat.join("  ·  ");
+
+    if (lastAction !== null && (act !== lastAction || d.stance !== lastStance)) {
+      card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+    }
+    lastAction = act; lastStance = d.stance;
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch("/state", { cache: "no-store" });
+      const d = await r.json();
+      if (d && d.t && d.t !== lastT) { lastT = d.t; lastSeenAt = performance.now(); render(d); }
+    } catch (e) { /* bridge offline: the dot turns red */ }
+    $("dot").classList.toggle("off", performance.now() - lastSeenAt > 1500);
+    setTimeout(poll, 80);
+  }
+  poll();
+</script>
+</body>
+</html>

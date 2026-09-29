@@ -1,0 +1,4 @@
+# --decider local: qualquer causal LM do Hugging Face
+torch>=2.3
+transformers>=4.45
+accelerate>=0.33   # opcional, acelera o carregamento de modelos grandes

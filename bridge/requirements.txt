@@ -1,0 +1,11 @@
+# Base do bridge: só a biblioteca padrão do Python (3.11+).
+# O decisor "rules" e o fake_plugin.py rodam sem instalar nada.
+#
+# Extras, um arquivo por decisor (instale só o que for usar):
+#   pip install -r requirements-local.txt   # --decider local  (transformers + torch)
+#   pip install -r requirements-laya.txt    # --decider laya   (semantic-operators[laya], puxa torch)
+#   pip install -r requirements-julia.txt   # --decider julia  (huggingface_hub; o pacote vem do repo do modelo)
+#   pip install -r requirements-http.txt    # --decider http --http-backend typesafe
+#
+# No Windows com GPU NVIDIA, instale o torch com CUDA ANTES dos extras
+# (o torch do PyPI para Windows é só CPU). Veja o README.
